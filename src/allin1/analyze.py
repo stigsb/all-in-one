@@ -14,7 +14,7 @@ from .helpers import (
   rmdir_if_empty,
   save_results,
 )
-from .utils import mkpath, load_result
+from .utils import mkpath, load_result, default_device
 from .typings import AnalysisResult, PathLike
 
 
@@ -24,7 +24,7 @@ def analyze(
   visualize: Union[bool, PathLike] = False,
   sonify: Union[bool, PathLike] = False,
   model: str = 'harmonix-all',
-  device: str = 'cuda' if torch.cuda.is_available() else 'cpu',
+  device: str = None,
   include_activations: bool = False,
   include_embeddings: bool = False,
   demix_dir: PathLike = './demix',
@@ -52,7 +52,7 @@ def analyze(
       Name of the pre-trained model to be used for the analysis. Default is 'harmonix-all'. Please refer to the
       documentation for the available models.
   device : str, optional
-      Device to be used for computation. Default is 'cuda' if available, otherwise 'cpu'.
+      Device to be used for computation. Default is 'cuda' if available, then 'mps', otherwise 'cpu'.
   include_activations : bool, optional
       Whether to include activations in the analysis results or not.
   include_embeddings : bool, optional
@@ -75,6 +75,7 @@ def analyze(
   """
 
   # Clean up the arguments.
+  device = device or default_device()
   return_list = True
   if not isinstance(paths, list):
     return_list = False

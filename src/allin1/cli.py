@@ -3,6 +3,7 @@ import torch
 
 from pathlib import Path
 from .analyze import analyze
+from .utils import default_device
 
 
 def make_parser():
@@ -25,8 +26,8 @@ def make_parser():
                       help='Save frame-level embeddings (default: False)')
   parser.add_argument('-m', '--model', type=str, default='harmonix-all',
                       help='Name of the pretrained model to use (default: harmonix-all)')
-  parser.add_argument('-d', '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu',
-                      help='Device to use (default: cuda if available else cpu)')
+  parser.add_argument('-d', '--device', type=str, default=default_device(),
+                      help='Device to use (default: cuda if available, else mps, else cpu)')
   parser.add_argument('-k', '--keep-byproducts', action='store_true',
                       help='Keep demixed audio files and spectrograms (default: False)')
   parser.add_argument('--demix-dir', type=Path, default=cwd / 'demix',

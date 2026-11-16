@@ -6,10 +6,28 @@
 import math
 import torch
 from abc import ABC,  abstractmethod
-from typing import Optional, Tuple, Callable
+from typing import Optional, Tuple, Callable, Union
+
+if not hasattr(torch.cuda, '_device_t'):
+  # natten 0.15 imports this type alias, which torch dropped in 2.8.
+  torch.cuda._device_t = Union[torch.device, str, int]
+
 from natten.functional import natten1dav, natten1dqkrpb, natten2dav, natten2dqkrpb
+from . import natten_fallback
 from ..config import Config
 from .utils import *
+
+# NATTEN only has CPU and CUDA kernels; everything else (MPS) takes the slower
+# pure-PyTorch path, which produces identical results.
+NATTEN_DEVICES = ('cpu', 'cuda')
+
+
+def _natten_op(native: Callable, fallback: Callable) -> Callable:
+  def run(tensor, *args):
+    op = native if tensor.device.type in NATTEN_DEVICES else fallback
+    return op(tensor, *args)
+
+  return run
 
 
 # Copied from transformers.models.beit.modeling_beit.drop_path
@@ -141,8 +159,8 @@ class NeighborhoodAttention1d(_NeighborhoodAttentionNd):
       torch.zeros(num_heads, (2 * self.kernel_size - 1)),
       requires_grad=True,
     )
-    self.nattendqkrpb = natten1dqkrpb
-    self.nattendav = natten1dav
+    self.nattendqkrpb = _natten_op(natten1dqkrpb, natten_fallback.natten1dqkrpb)
+    self.nattendav = _natten_op(natten1dav, natten_fallback.natten1dav)
 
 
 class NeighborhoodAttention2d(_NeighborhoodAttentionNd):
@@ -159,8 +177,8 @@ class NeighborhoodAttention2d(_NeighborhoodAttentionNd):
       torch.zeros(num_heads, (2 * self.kernel_size - 1), (2 * self.kernel_size - 1)),
       requires_grad=True,
     )
-    self.nattendqkrpb = natten2dqkrpb
-    self.nattendav = natten2dav
+    self.nattendqkrpb = _natten_op(natten2dqkrpb, natten_fallback.natten2dqkrpb)
+    self.nattendav = _natten_op(natten2dav, natten_fallback.natten2dav)
 
 
 # Copied from transformers.models.nat.modeling_nat.NeighborhoodAttentionOutput

@@ -7,7 +7,7 @@ name = "allin1"
 dynamic = ["version"]
 description = "All-In-One Music Structure Analyzer"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 license = "MIT"
 keywords = ["music", "beat", "downbeat", "tracking", "structure", "analysis", "allin1"]
 authors = [
@@ -26,12 +26,18 @@ classifiers = [
 dependencies = [
   "numpy",
   "librosa",
-  "natten; platform_system == 'Darwin'",
+  "madmom",
+  # allin1 uses natten.functional.natten{1,2}d{qkrpb,av}, removed in natten 0.17
+  "natten>=0.15,<0.16; platform_system == 'Darwin'",
   "demucs",
   "hydra-core",
   "omegaconf",
   "huggingface_hub",
   "matplotlib",
+  # natten 0.15 builds against the installed torch headers. Apple clang 21
+  # rejects torch < 2.8 headers (std::is_arithmetic specialization), and
+  # torch >= 2.14 headers need C++20 while natten compiles with C++17.
+  "torch>=2.8,<2.14; platform_system == 'Darwin' and platform_machine == 'arm64'",
 ]
 
 [project.optional-dependencies]
@@ -39,8 +45,7 @@ train = [
   "lightning",
   "timm",
   "wandb",
-  "mir_eval",
-  "numpy<1.24", # otherwise, mir_eval will raise AttributeError: module 'numpy' has no attribute 'int'
+  "mir_eval>=0.8",  # <0.8 uses np.int, removed in numpy 1.24
 ]
 
 [project.urls]
@@ -58,3 +63,19 @@ path = "src/allin1/__about__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/allin1"]
+
+# natten ships only an sdist and has no static metadata: its setup.py imports
+# torch and shells out to cmake (system cmake >= 3.20 must be on PATH).
+# Declaring the metadata here lets uv resolve it and build it against the same
+# torch that gets installed at runtime.
+[[tool.uv.dependency-metadata]]
+name = "natten"
+version = "0.15.1"
+requires-dist = ["packaging", "torch>=2.0.0"]
+
+# PyPI's madmom 0.16.1 predates Python 3.10; only git master builds.
+[tool.uv.sources]
+madmom = { git = "https://github.com/CPJKU/madmom" }
+
+[tool.uv.extra-build-dependencies]
+natten = [{ requirement = "torch", match-runtime = true }, "setuptools", "wheel"]

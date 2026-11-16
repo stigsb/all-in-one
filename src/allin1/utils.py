@@ -1,7 +1,17 @@
 import re
+import torch
 
 from pathlib import Path
 from .typings import PathLike, AnalysisResult
+
+
+def default_device() -> str:
+  """Best available device: CUDA, else Apple-silicon GPU, else CPU."""
+  if torch.cuda.is_available():
+    return 'cuda'
+  if torch.backends.mps.is_available():
+    return 'mps'
+  return 'cpu'
 
 
 def compact_json_number_array(json_str: str):
